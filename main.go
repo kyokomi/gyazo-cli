@@ -55,6 +55,18 @@ func realMain() int {
 				Email: "tomohiro.t@gmail.com",
 			},
 		},
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "open",
+				Value: false,
+				Usage: "open uploaded file",
+			},
+			&cli.BoolFlag{
+				Name:  "permalink",
+				Value: false,
+				Usage: "permalinkURL or URL",
+			},
+		},
 		Copyright: "© 2019 Tomohiro Taira",
 	}
 	err := app.Run(os.Args)
@@ -80,6 +92,9 @@ func upload(c *cli.Context) error {
 	var err error
 
 	filename = c.Args().First()
+
+	isOpen := c.Bool("open")
+	isPermalink := c.Bool("permalink")
 
 	if filename == "" {
 		filename, err = takeScreenshot()
@@ -108,7 +123,12 @@ func upload(c *cli.Context) error {
 			fmt.Fprint(os.Stderr, "Failed to upload via API request\n")
 			return err
 		}
-		url = image.PermalinkURL
+
+		if isPermalink {
+			url = image.PermalinkURL
+		} else {
+			url = image.URL
+		}
 	} else {
 		// Create multipart/form-data
 		body := &bytes.Buffer{}
@@ -145,11 +165,15 @@ func upload(c *cli.Context) error {
 	}
 
 	fmt.Println(url)
-	err = open.Run(url)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open by default browser: %s\n", err)
+
+	if isOpen {
+		if err := open.Run(url); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to open by default browser: %s\n", err)
+			return err
+		}
 	}
-	return err
+
+	return nil
 }
 
 // takeScreenshot takes a screenshot and then returns it file path.
